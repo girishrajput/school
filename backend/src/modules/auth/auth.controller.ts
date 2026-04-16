@@ -1,30 +1,35 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Controller, Post, Get, Body, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginAuthDto } from './dto/login-auth.dto';
-import { RegisterAuthDto } from './dto/register-auth.dto';
+import { AuthGuard } from '../../common/guards/auth.guard';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  async register(@Body() dto: RegisterAuthDto) {
-    return this.authService.registerSchoolAdmin(dto);
+  @HttpCode(HttpStatus.CREATED)
+  async register(
+    @Body() registerDto: {
+      email: string;
+      password: string;
+      firstName: string;
+      lastName: string;
+      roleId: string;
+      schoolId: string;
+    },
+  ) {
+    return this.authService.register(registerDto);
   }
 
-  @HttpCode(HttpStatus.OK)
   @Post('login')
-  async login(@Body() dto: LoginAuthDto) {
-    const user = await this.authService.validateUser(dto.email, dto.password);
-    if (!user) {
-      return { statusCode: HttpStatus.UNAUTHORIZED, message: 'Invalid credentials' };
-    }
-    return this.authService.login(user);
+  @HttpCode(HttpStatus.OK)
+  async login(@Body() loginDto: { email: string; password: string }) {
+    return this.authService.login(loginDto);
   }
 
-  @HttpCode(HttpStatus.OK)
-  @Post('refresh')
-  async refresh(@Body('refreshToken') refreshToken: string) {
-    return this.authService.refreshToken(refreshToken);
+  @Get('profile')
+  @UseGuards(AuthGuard)
+  async getProfile(@Request() req: any) {
+    return this.authService.getProfile(req.user.id);
   }
 }

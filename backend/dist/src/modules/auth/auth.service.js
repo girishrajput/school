@@ -12,65 +12,123 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
+const prisma_service_1 = require("../../prisma/prisma.service");
 const bcrypt = require("bcrypt");
-const users_service_1 = require("../users/users.service");
-const schools_service_1 = require("../schools/schools.service");
 let AuthService = class AuthService {
-    constructor(usersService, schoolsService, jwtService) {
-        this.usersService = usersService;
-        this.schoolsService = schoolsService;
+    constructor(prisma, jwtService) {
+        this.prisma = prisma;
         this.jwtService = jwtService;
     }
-    async validateUser(email, pass) {
-        const user = await this.usersService.findByEmail(email);
-        if (!user)
-            return null;
-        const isMatch = await bcrypt.compare(pass, user.password);
-        if (!isMatch)
-            return null;
-        return user;
-    }
-    async login(user) {
-        const payload = { sub: user.id, email: user.email, roleId: user.roleId, schoolId: user.schoolId };
+    async register(registerDto) {
+        const { email, password, firstName, lastName, roleId, schoolId } = registerDto;
+        if (!email || !password || !firstName || !lastName || !roleId || !schoolId) {
+            throw new common_1.BadRequestException('All fields are required');
+        }
+        const school = await this.prisma.school.findUnique({
+            where: { id: schoolId },
+        });
+        if (!school) {
+            throw new common_1.BadRequestException('School not found');
+        }
+        const role = await this.prisma.role.findUnique({
+            where: { id: roleId },
+        });
+        if (!role) {
+            throw new common_1.BadRequestException('Role not found');
+        }
+        const existingUser = await this.prisma.user.findUnique({
+            where: { email },
+        });
+        if (existingUser) {
+            throw new common_1.ConflictException('User already exists');
+        }
+        const hashedPassword = await bcrypt.hash(password, 12);
+        const user = await this.prisma.user.create({
+            data: {
+                email,
+                password: hashedPassword,
+                firstName,
+                lastName,
+                roleId,
+                schoolId,
+            },
+        });
+        const token = this.jwtService.sign({
+            id: user.id,
+            email: user.email,
+            schoolId: user.schoolId,
+            roleId: user.roleId,
+        });
         return {
-            accessToken: this.jwtService.sign(payload),
-            refreshToken: this.jwtService.sign({ ...payload, type: 'refresh' }, { expiresIn: '7d' }),
+            user: {
+                id: user.id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                roleId: user.roleId,
+                schoolId: user.schoolId,
+            },
+            token,
         };
     }
-    async registerSchoolAdmin(data) {
-        const school = await this.schoolsService.create({ name: data.schoolName, domain: data.schoolDomain });
-        const hashed = await bcrypt.hash(data.password, 10);
-        const roleId = data.roleId || (await this.usersService.getRoleIdByName('ADMIN'));
-        const user = await this.usersService.create({
-            email: data.email,
-            password: hashed,
-            firstName: data.firstName,
-            lastName: data.lastName,
-            roleId,
-            schoolId: school.id,
+    async login(loginDto) {
+        const { email, password } = loginDto;
+        if (!email || !password) {
+            throw new common_1.BadRequestException('Email and password are required');
+        }
+        const user = await this.prisma.user.findUnique({
+            where: { email },
         });
-        return { school, user };
+        if (!user) {
+            throw new common_1.UnauthorizedException('Invalid credentials');
+        }
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+            throw new common_1.UnauthorizedException('Invalid credentials');
+        }
+        const token = this.jwtService.sign({
+            id: user.id,
+            email: user.email,
+            schoolId: user.schoolId,
+            roleId: user.roleId,
+        });
+        return {
+            user: {
+                id: user.id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                roleId: user.roleId,
+                schoolId: user.schoolId,
+            },
+            token,
+        };
     }
-    async refreshToken(token) {
-        try {
-            const payload = this.jwtService.verify(token, { ignoreExpiration: false });
-            if (payload.type !== 'refresh')
-                throw new common_1.UnauthorizedException('Invalid refresh token');
-            const user = await this.usersService.findById(payload.sub);
-            if (!user)
-                throw new common_1.UnauthorizedException();
-            return this.login(user);
+    async getProfile(userId) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                role: true,
+                school: true,
+            },
+        });
+        if (!user) {
+            throw new common_1.UnauthorizedException('User not found');
         }
-        catch (err) {
-            throw new common_1.UnauthorizedException('Refresh token invalid or expired');
-        }
+        return {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role,
+            school: user.school,
+        };
     }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [users_service_1.UsersService,
-        schools_service_1.SchoolsService,
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         jwt_1.JwtService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

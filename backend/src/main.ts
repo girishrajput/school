@@ -12,7 +12,6 @@ async function bootstrap() {
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }));
-  app.enableCors();
   await app.listen(4000);
   console.log('Backend running on http://localhost:4000');
 }

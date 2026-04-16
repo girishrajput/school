@@ -1,39 +1,56 @@
-import { HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginAuthDto } from './dto/login-auth.dto';
-import { RegisterAuthDto } from './dto/register-auth.dto';
 export declare class AuthController {
     private readonly authService;
     constructor(authService: AuthService);
-    register(dto: RegisterAuthDto): Promise<{
-        school: {
-            id: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            domain: string;
-        };
+    register(registerDto: {
+        email: string;
+        password: string;
+        firstName: string;
+        lastName: string;
+        roleId: string;
+        schoolId: string;
+    }): Promise<{
         user: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             email: string;
-            password: string;
             firstName: string;
             lastName: string;
             roleId: string;
             schoolId: string;
         };
+        token: string;
     }>;
-    login(dto: LoginAuthDto): Promise<{
-        accessToken: string;
-        refreshToken: string;
-    } | {
-        statusCode: HttpStatus;
-        message: string;
+    login(loginDto: {
+        email: string;
+        password: string;
+    }): Promise<{
+        user: {
+            id: string;
+            email: string;
+            firstName: string;
+            lastName: string;
+            roleId: string;
+            schoolId: string;
+        };
+        token: string;
     }>;
-    refresh(refreshToken: string): Promise<{
-        accessToken: string;
-        refreshToken: string;
+    getProfile(req: any): Promise<{
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        role: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+        };
+        school: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            domain: string;
+        };
     }>;
 }

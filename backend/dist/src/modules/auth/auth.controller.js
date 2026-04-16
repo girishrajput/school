@@ -15,50 +15,46 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const common_1 = require("@nestjs/common");
 const auth_service_1 = require("./auth.service");
-const login_auth_dto_1 = require("./dto/login-auth.dto");
-const register_auth_dto_1 = require("./dto/register-auth.dto");
+const auth_guard_1 = require("../../common/guards/auth.guard");
 let AuthController = class AuthController {
     constructor(authService) {
         this.authService = authService;
     }
-    async register(dto) {
-        return this.authService.registerSchoolAdmin(dto);
+    async register(registerDto) {
+        return this.authService.register(registerDto);
     }
-    async login(dto) {
-        const user = await this.authService.validateUser(dto.email, dto.password);
-        if (!user) {
-            return { statusCode: common_1.HttpStatus.UNAUTHORIZED, message: 'Invalid credentials' };
-        }
-        return this.authService.login(user);
+    async login(loginDto) {
+        return this.authService.login(loginDto);
     }
-    async refresh(refreshToken) {
-        return this.authService.refreshToken(refreshToken);
+    async getProfile(req) {
+        return this.authService.getProfile(req.user.id);
     }
 };
 exports.AuthController = AuthController;
 __decorate([
     (0, common_1.Post)('register'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [register_auth_dto_1.RegisterAuthDto]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "register", null);
 __decorate([
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, common_1.Post)('login'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [login_auth_dto_1.LoginAuthDto]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "login", null);
 __decorate([
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    (0, common_1.Post)('refresh'),
-    __param(0, (0, common_1.Body)('refreshToken')),
+    (0, common_1.Get)('profile'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
+    __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
-], AuthController.prototype, "refresh", null);
+], AuthController.prototype, "getProfile", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService])
